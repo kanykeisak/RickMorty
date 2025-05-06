@@ -1,101 +1,99 @@
 package com.example.rickmorty.ui.screens.characters
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import com.example.rickmorty.data.model.Character
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import com.example.rickmorty.ui.components.CharacterItem
+import com.example.rickmorty.ui.components.FilterDialog
+import com.example.rickmorty.ui.viewmodel.CharactersViewModel
+import org.koin.androidx.compose.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharactersScreen(
     onCharacterClick: (Int) -> Unit,
-    viewModel: CharactersViewModel = viewModel()
+    viewModel: CharactersViewModel = koinViewModel()
 ) {
-    val characters by viewModel.characters.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var showFilters by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
+    val characters = viewModel.characters.collectAsLazyPagingItems()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(characters) { character ->
-            CharacterItem(
-                character = character,
-                onClick = { onCharacterClick(character.id) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Characters") },
+                actions = {
+                    IconButton(onClick = { showFilters = true }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filters")
+                    }
+                }
             )
         }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { 
+                    searchQuery = it
+                    viewModel.updateFilters(name = it)
+                },
+                onSearch = { },
+                active = false,
+                onActiveChange = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = { Text("Search characters...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") }
+            ) { }
 
-        if (isLoading) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    count = characters.itemCount,
+                    key = characters.itemKey { it.id }
+                ) { index ->
+                    characters[index]?.let { character ->
+                        CharacterItem(
+                            character = character,
+                            onClick = { onCharacterClick(character.id) },
+                            onFavoriteClick = { viewModel.addToFavorites(character) }
+                        )
+                    }
                 }
             }
         }
-    }
 
-    error?.let { errorMessage ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = errorMessage)
-        }
-    }
-}
-
-@Composable
-fun CharacterItem(
-    character: Character,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = character.image,
-                contentDescription = character.name,
-                modifier = Modifier
-                    .size(60.dp)
+        if (showFilters) {
+            FilterDialog(
+                currentStatus = uiState.statusFilter,
+                currentSpecies = uiState.speciesFilter,
+                onDismiss = { showFilters = false },
+                onApply = { status, species ->
+                    viewModel.updateFilters(
+                        name = searchQuery,
+                        status = status,
+                        species = species
+                    )
+                    showFilters = false
+                }
             )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column {
-                Text(
-                    text = character.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${character.status} - ${character.species}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
         }
     }
 } 
