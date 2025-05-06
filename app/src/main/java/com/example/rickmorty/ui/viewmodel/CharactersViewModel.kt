@@ -2,6 +2,8 @@ package com.example.rickmorty.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.example.rickmorty.data.model.Character
 import com.example.rickmorty.data.model.FavoriteCharacter
 import com.example.rickmorty.data.repository.CharacterRepository
@@ -9,10 +11,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class CharactersUiState(
-    val characters: List<Character> = emptyList(),
+    val characters: PagingData<Character> = PagingData.empty(),
     val favorites: List<FavoriteCharacter> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val nameFilter: String = "",
+    val statusFilter: String? = null,
+    val speciesFilter: String? = null
 )
 
 class CharactersViewModel(
@@ -22,6 +27,9 @@ class CharactersViewModel(
     private val _uiState = MutableStateFlow(CharactersUiState())
     val uiState: StateFlow<CharactersUiState> = _uiState.asStateFlow()
 
+    private val _characters = MutableStateFlow<PagingData<Character>>(PagingData.empty())
+    val characters: StateFlow<PagingData<Character>> = _characters.asStateFlow()
+
     init {
         loadCharacters()
         loadFavorites()
@@ -29,13 +37,12 @@ class CharactersViewModel(
 
     private fun loadCharacters() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                repository.getCharacters().collect { characters ->
-                    _uiState.update { it.copy(characters = characters, isLoading = false) }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
+            repository.getCharacters(
+                name = _uiState.value.nameFilter.takeIf { it.isNotEmpty() },
+                status = _uiState.value.statusFilter,
+                species = _uiState.value.speciesFilter
+            ).cachedIn(viewModelScope).collect { pagingData ->
+                _characters.value = pagingData
             }
         }
     }
@@ -48,25 +55,19 @@ class CharactersViewModel(
         }
     }
 
-    fun searchCharacters(query: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                repository.searchCharacters(query).collect { characters ->
-                    _uiState.update { it.copy(characters = characters, isLoading = false) }
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message, isLoading = false) }
-            }
+    fun updateFilters(
+        name: String? = null,
+        status: String? = null,
+        species: String? = null
+    ) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                nameFilter = name ?: currentState.nameFilter,
+                statusFilter = status,
+                speciesFilter = species
+            )
         }
-    }
-
-    fun searchFavorites(query: String) {
-        viewModelScope.launch {
-            repository.searchFavoriteCharacters(query).collect { favorites ->
-                _uiState.update { it.copy(favorites = favorites) }
-            }
-        }
+        loadCharacters()
     }
 
     fun addToFavorites(character: Character) {

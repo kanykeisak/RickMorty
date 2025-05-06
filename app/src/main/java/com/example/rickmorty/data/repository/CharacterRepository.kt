@@ -1,10 +1,14 @@
 package com.example.rickmorty.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.rickmorty.data.api.RickAndMortyApi
 import com.example.rickmorty.data.local.FavoriteCharacterDao
 import com.example.rickmorty.data.model.Character
 import com.example.rickmorty.data.model.CharacterResponse
 import com.example.rickmorty.data.model.FavoriteCharacter
+import com.example.rickmorty.data.paging.CharacterPagingSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -24,8 +28,26 @@ class CharacterRepository(
         return api.getCharacter(id)
     }
 
-    fun getCharacters(): Flow<List<Character>> {
-        return api.getCharacters().map { it.results }
+    fun getCharacters(
+        name: String? = null,
+        status: String? = null,
+        species: String? = null
+    ): Flow<PagingData<Character>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false,
+                prefetchDistance = 2
+            ),
+            pagingSourceFactory = {
+                CharacterPagingSource(
+                    api = api,
+                    name = name,
+                    status = status,
+                    species = species
+                )
+            }
+        ).flow
     }
 
     fun searchCharacters(query: String): Flow<List<Character>> {
