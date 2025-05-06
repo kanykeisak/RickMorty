@@ -1,40 +1,45 @@
 package com.example.rickmorty.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.rickmorty.ui.screens.characters.CharacterDetailScreen
-import com.example.rickmorty.ui.screens.characters.CharactersScreen
-import com.example.rickmorty.ui.screens.episodes.EpisodesScreen
-import com.example.rickmorty.ui.screens.locations.LocationsScreen
+import com.example.rickmorty.ui.screens.character.CharacterDetailScreen
+import com.example.rickmorty.ui.screens.character.CharactersScreen
+import com.example.rickmorty.ui.screens.episode.EpisodeDetailScreen
+import com.example.rickmorty.ui.screens.episode.EpisodesScreen
+import com.example.rickmorty.ui.screens.favorites.FavoritesScreen
+import com.example.rickmorty.ui.screens.location.LocationDetailScreen
+import com.example.rickmorty.ui.screens.location.LocationsScreen
 
 sealed class Screen(val route: String) {
     object Characters : Screen("characters")
-    object CharacterDetail : Screen("character/{characterId}") {
-        fun createRoute(characterId: Int) = "character/$characterId"
+    object CharacterDetail : Screen("character/{id}") {
+        fun createRoute(id: Int) = "character/$id"
+    }
+    object Episodes : Screen("episodes")
+    object EpisodeDetail : Screen("episode/{id}") {
+        fun createRoute(id: Int) = "episode/$id"
     }
     object Locations : Screen("locations")
-    object Episodes : Screen("episodes")
+    object LocationDetail : Screen("location/{id}") {
+        fun createRoute(id: Int) = "location/$id"
+    }
+    object Favorites : Screen("favorites")
 }
 
 @Composable
-fun NavGraph(
-    navController: NavHostController,
-    modifier: Modifier = Modifier
-) {
+fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Characters.route,
-        modifier = modifier
+        startDestination = Screen.Characters.route
     ) {
         composable(Screen.Characters.route) {
             CharactersScreen(
-                onCharacterClick = { characterId ->
-                    navController.navigate(Screen.CharacterDetail.createRoute(characterId))
+                onCharacterClick = { id ->
+                    navController.navigate(Screen.CharacterDetail.createRoute(id))
                 }
             )
         }
@@ -42,24 +47,58 @@ fun NavGraph(
         composable(
             route = Screen.CharacterDetail.route,
             arguments = listOf(
-                navArgument("characterId") {
-                    type = NavType.IntType
-                }
+                navArgument("id") { type = NavType.IntType }
             )
         ) {
             CharacterDetailScreen(
-                onBackClick = {
-                    navController.popBackStack()
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Episodes.route) {
+            EpisodesScreen(
+                onEpisodeClick = { id ->
+                    navController.navigate(Screen.EpisodeDetail.createRoute(id))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.EpisodeDetail.route,
+            arguments = listOf(
+                navArgument("id") { type = NavType.IntType }
+            )
+        ) {
+            EpisodeDetailScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
 
         composable(Screen.Locations.route) {
-            LocationsScreen()
+            LocationsScreen(
+                onLocationClick = { id ->
+                    navController.navigate(Screen.LocationDetail.createRoute(id))
+                }
+            )
         }
 
-        composable(Screen.Episodes.route) {
-            EpisodesScreen()
+        composable(
+            route = Screen.LocationDetail.route,
+            arguments = listOf(
+                navArgument("id") { type = NavType.IntType }
+            )
+        ) {
+            LocationDetailScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Favorites.route) {
+            FavoritesScreen(
+                onCharacterClick = { id ->
+                    navController.navigate(Screen.CharacterDetail.createRoute(id))
+                }
+            )
         }
     }
 } 
