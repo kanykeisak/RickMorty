@@ -6,6 +6,7 @@ import com.example.rickmorty.data.model.Character
 import com.example.rickmorty.data.model.CharacterResponse
 import com.example.rickmorty.data.model.FavoriteCharacter
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class CharacterRepository(
     private val api: RickAndMortyApi,
@@ -15,12 +16,28 @@ class CharacterRepository(
         return api.getCharacters(page)
     }
 
+    suspend fun searchCharacters(query: String, page: Int = 1): CharacterResponse {
+        return api.searchCharacters(query, page)
+    }
+
     suspend fun getCharacter(id: Int): Character {
         return api.getCharacter(id)
     }
 
-    fun getAllFavorites(): Flow<List<FavoriteCharacter>> {
+    fun getCharacters(): Flow<List<Character>> {
+        return api.getCharacters().map { it.results }
+    }
+
+    fun searchCharacters(query: String): Flow<List<Character>> {
+        return api.searchCharacters(query).map { it.results }
+    }
+
+    fun getFavoriteCharacters(): Flow<List<FavoriteCharacter>> {
         return favoriteDao.getAllFavorites()
+    }
+
+    fun searchFavoriteCharacters(query: String): Flow<List<FavoriteCharacter>> {
+        return favoriteDao.searchFavorites("%$query%")
     }
 
     suspend fun addToFavorites(character: Character) {
@@ -39,7 +56,7 @@ class CharacterRepository(
         favoriteDao.deleteFavorite(character)
     }
 
-    suspend fun isFavorite(characterId: Int): Boolean {
+    fun isFavorite(characterId: Int): Flow<Boolean> {
         return favoriteDao.isFavorite(characterId)
     }
 } 
