@@ -14,17 +14,35 @@ interface RickAndMortyApi {
     @GET("character")
     suspend fun getCharacters(@Query("page") page: Int = 1): CharacterResponse
 
+    @GET("character")
+    suspend fun searchCharacters(
+        @Query("name") query: String,
+        @Query("page") page: Int = 1
+    ): CharacterResponse
+
     @GET("character/{id}")
     suspend fun getCharacter(@Path("id") id: Int): Character
 
     @GET("episode")
     suspend fun getEpisodes(@Query("page") page: Int = 1): EpisodeResponse
 
+    @GET("episode")
+    suspend fun searchEpisodes(
+        @Query("name") query: String,
+        @Query("page") page: Int = 1
+    ): EpisodeResponse
+
     @GET("episode/{id}")
     suspend fun getEpisode(@Path("id") id: Int): Episode
 
     @GET("location")
     suspend fun getLocations(@Query("page") page: Int = 1): LocationResponse
+
+    @GET("location")
+    suspend fun searchLocations(
+        @Query("name") query: String,
+        @Query("page") page: Int = 1
+    ): LocationResponse
 
     @GET("location/{id}")
     suspend fun getLocation(@Path("id") id: Int): Location

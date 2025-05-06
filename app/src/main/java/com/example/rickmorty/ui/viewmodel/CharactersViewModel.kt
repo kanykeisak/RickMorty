@@ -5,19 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.rickmorty.data.model.Character
 import com.example.rickmorty.data.model.FavoriteCharacter
 import com.example.rickmorty.data.repository.CharacterRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class CharactersUiState(
     val characters: List<Character> = emptyList(),
     val favorites: List<FavoriteCharacter> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null,
-    val currentPage: Int = 1,
-    val hasNextPage: Boolean = true
+    val error: String? = null
 )
 
 class CharactersViewModel(
@@ -32,58 +27,61 @@ class CharactersViewModel(
         loadFavorites()
     }
 
-    fun loadCharacters() {
+    private fun loadCharacters() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true) }
             try {
-                val response = repository.getCharacters(_uiState.value.currentPage)
-                _uiState.update {
-                    it.copy(
-                        characters = it.characters + response.results,
-                        currentPage = it.currentPage + 1,
-                        hasNextPage = response.info.next != null,
-                        isLoading = false
-                    )
+                repository.getCharacters().collect { characters ->
+                    _uiState.update { it.copy(characters = characters, isLoading = false) }
                 }
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message
-                    )
-                }
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }
 
     private fun loadFavorites() {
         viewModelScope.launch {
-            repository.getAllFavorites().collect { favorites ->
+            repository.getFavoriteCharacters().collect { favorites ->
                 _uiState.update { it.copy(favorites = favorites) }
             }
         }
     }
 
-    fun toggleFavorite(character: Character) {
+    fun searchCharacters(query: String) {
         viewModelScope.launch {
-            val isFavorite = repository.isFavorite(character.id)
-            if (isFavorite) {
-                repository.removeFromFavorites(
-                    FavoriteCharacter(
-                        id = character.id,
-                        name = character.name,
-                        status = character.status,
-                        species = character.species,
-                        image = character.image
-                    )
-                )
-            } else {
-                repository.addToFavorites(character)
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                repository.searchCharacters(query).collect { characters ->
+                    _uiState.update { it.copy(characters = characters, isLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
         }
     }
 
-    fun isFavorite(characterId: Int): Boolean {
-        return _uiState.value.favorites.any { it.id == characterId }
+    fun searchFavorites(query: String) {
+        viewModelScope.launch {
+            repository.searchFavoriteCharacters(query).collect { favorites ->
+                _uiState.update { it.copy(favorites = favorites) }
+            }
+        }
+    }
+
+    fun addToFavorites(character: Character) {
+        viewModelScope.launch {
+            repository.addToFavorites(character)
+        }
+    }
+
+    fun removeFromFavorites(character: FavoriteCharacter) {
+        viewModelScope.launch {
+            repository.removeFromFavorites(character)
+        }
+    }
+
+    fun isFavorite(characterId: Int): Flow<Boolean> {
+        return repository.isFavorite(characterId)
     }
 } 
